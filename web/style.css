@@ -1,0 +1,421 @@
+/* Clip Review — Mac Classic / NeXT chrome (System 7/8 Platinum era).
+   Player iframes deliberately stay free of overlays — chrome only. */
+
+:root {
+  /* Platinum palette */
+  --bg-desktop: #777a7a;          /* dark stippled desktop */
+  --bg-window: #dcdcdc;           /* window body */
+  --bg-window-deep: #c4c4c4;      /* sunken inputs */
+  --bg-titlebar-light: #f5f5f5;
+  --bg-titlebar-dark: #9a9a9a;
+  --fg: #000000;
+  --fg-mute: #4a4a4a;
+  --fg-disabled: #8a8a8a;
+  --accent: #2b2b2b;              /* near-black, NeXT-leaning */
+  --shadow: #00000044;
+
+  /* Bevels (1px crispy) */
+  --bevel-light: #ffffff;
+  --bevel-dark: #000000;
+  --bevel-mid: #888888;
+
+  --font-display: "Silkscreen", "Chicago", "ChicagoFLF", "Charcoal", monospace;
+  --font-body: "Geneva", "Lucida Grande", "Verdana", system-ui, sans-serif;
+  --font-mono: "Monaco", "Menlo", "Courier New", monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  /* Stippled desktop pattern — Mac System 7 default desktop fill */
+  background-color: var(--bg-desktop);
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    radial-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1px);
+  background-size: 4px 4px, 4px 4px;
+  background-position: 0 0, 2px 2px;
+
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  min-height: 100vh;
+  padding: 24px 16px 64px;
+}
+
+/* ---------- Layout shell ---------- */
+
+.desktop {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* ---------- Window ---------- */
+
+.window {
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    2px 2px 0 var(--shadow),
+    4px 4px 0 var(--shadow);
+  margin-bottom: 18px;
+}
+
+.window--root {
+  /* Outer "application window" */
+  margin-bottom: 8px;
+}
+
+.window--inner {
+  margin: 14px;
+}
+
+.window--inner:last-child {
+  margin-bottom: 14px;
+}
+
+.window__body {
+  padding: 14px;
+}
+
+/* ---------- Title bar (striped, with close box) ---------- */
+
+.title-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--bevel-dark);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      var(--bg-titlebar-light) 0 1px,
+      var(--bg-titlebar-dark) 1px 2px
+    );
+}
+
+.title-bar__text {
+  margin: 0;
+  padding: 0 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  background: var(--bg-window);
+  /* Title sits on a small mat over the stripes — classic Mac trick */
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.close-box {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  cursor: default;
+}
+
+.close-box:disabled {
+  opacity: 0.85;
+}
+
+/* ---------- Form / fields ---------- */
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  grid-template-areas:
+    "url window"
+    "actions actions";
+  gap: 12px;
+}
+
+.form .field:nth-of-type(1) { grid-area: url; }
+.form .field:nth-of-type(2) { grid-area: window; }
+.form__actions { grid-area: actions; display: flex; gap: 8px; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field__label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 6px 8px;
+  background: #ffffff;
+  color: var(--fg);
+  /* Sunken bevel — opposite of raised buttons */
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+  border-radius: 0;
+  outline: none;
+}
+
+.input:focus {
+  /* Keep sunken bevel; just tighten outline as a focus cue */
+  outline: 1px dotted var(--bevel-dark);
+  outline-offset: -3px;
+}
+
+select.input {
+  /* Native arrow keeps the period feel. Force consistent height. */
+  appearance: auto;
+  height: 30px;
+}
+
+/* ---------- Buttons ---------- */
+
+.button {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  min-height: 26px;
+  background: var(--bg-window);
+  color: var(--fg);
+  border: 1px solid var(--bevel-dark);
+  /* Raised: white top/left highlight, mid bottom/right shade */
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  border-radius: 0;
+  cursor: default;
+  user-select: none;
+}
+
+.button:hover:not(:disabled) {
+  background: #e6e6e6;
+}
+
+.button:active:not(:disabled) {
+  /* Press-in: invert the bevel */
+  box-shadow:
+    inset -1px -1px 0 var(--bevel-light),
+    inset 1px 1px 0 var(--bevel-mid);
+  background: var(--bg-window-deep);
+}
+
+.button:disabled {
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+
+.button--primary {
+  /* Default-button thick black ring — Mac OS 8 hint */
+  outline: 2px solid var(--bevel-dark);
+  outline-offset: 1px;
+  font-weight: 700;
+}
+
+/* ---------- Player ---------- */
+
+.player {
+  position: relative;
+  background: #000000;
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+}
+
+.player iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.player__placeholder {
+  color: #cccccc;
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-align: center;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+}
+
+.player__hint {
+  color: #888888;
+  font-size: 10px;
+}
+
+.player__controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Queue ---------- */
+
+.queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.queue li {
+  display: grid;
+  grid-template-columns: 24px 96px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px dotted #aaaaaa;
+  font-size: 13px;
+}
+
+.queue li:last-child {
+  border-bottom: 0;
+}
+
+.queue li.is-active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.queue li.is-active .queue__views {
+  color: #cccccc;
+}
+
+.queue__index {
+  font-family: var(--font-display);
+  font-size: 10px;
+  text-align: right;
+  color: var(--fg-mute);
+}
+
+.queue li.is-active .queue__index {
+  color: #ffffff;
+}
+
+.queue__thumb {
+  width: 96px;
+  height: 54px;
+  background: #222222;
+  border: 1px solid var(--bevel-dark);
+  object-fit: cover;
+  display: block;
+}
+
+.queue__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue__views {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+}
+
+.queue__empty {
+  display: block;
+  padding: 18px;
+  text-align: center;
+  font-style: italic;
+  color: var(--fg-mute);
+}
+
+/* ---------- Status bar ---------- */
+
+.status-bar {
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    2px 2px 0 var(--shadow);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-mute);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 720px) {
+  body {
+    padding: 12px 8px 48px;
+    font-size: 13px;
+  }
+
+  .window--inner {
+    margin: 8px;
+  }
+
+  .window__body {
+    padding: 10px;
+  }
+
+  .form {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "url"
+      "window"
+      "actions";
+  }
+
+  .queue li {
+    grid-template-columns: 24px 64px 1fr;
+    grid-template-rows: auto auto;
+    row-gap: 2px;
+  }
+
+  .queue__thumb {
+    width: 64px;
+    height: 36px;
+  }
+
+  .queue__views {
+    grid-column: 2 / -1;
+    font-size: 10px;
+  }
+}

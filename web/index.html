@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clip Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="desktop">
+      <main class="window window--root">
+        <header class="title-bar">
+          <button class="close-box" type="button" aria-label="close" disabled></button>
+          <h1 class="title-bar__text">Clip Review</h1>
+        </header>
+
+        <div class="window__body">
+          <section class="window window--inner" aria-labelledby="input-title">
+            <header class="title-bar">
+              <button class="close-box" type="button" aria-label="close" disabled></button>
+              <h2 class="title-bar__text" id="input-title">Pick a streamer</h2>
+            </header>
+            <div class="window__body">
+              <form class="form" id="streamer-form">
+                <label class="field">
+                  <span class="field__label">URL or name</span>
+                  <input
+                    class="input"
+                    type="text"
+                    name="streamer"
+                    id="streamer"
+                    placeholder="twitch.tv/streamername  or  kick.com/streamername"
+                    autocomplete="off"
+                    required
+                  />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Window</span>
+                  <select class="input" name="window" id="window">
+                    <option value="day">Last 24 hours</option>
+                    <option value="week" selected>Last 7 days</option>
+                    <option value="month">Last 30 days</option>
+                  </select>
+                </label>
+
+                <div class="form__actions">
+                  <button class="button button--primary" type="submit">Load clips</button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section class="window window--inner" aria-labelledby="player-title">
+            <header class="title-bar">
+              <button class="close-box" type="button" aria-label="close" disabled></button>
+              <h2 class="title-bar__text" id="player-title">Now playing</h2>
+            </header>
+            <div class="window__body">
+              <div class="player" id="player">
+                <div class="player__placeholder">
+                  <p>No clip loaded.</p>
+                  <p class="player__hint">Pick a streamer above to start.</p>
+                </div>
+              </div>
+              <div class="player__controls">
+                <button class="button" type="button" id="btn-prev" disabled>« Prev</button>
+                <button class="button" type="button" id="btn-skip" disabled>Skip ▸</button>
+                <button class="button" type="button" id="btn-next" disabled>Next »</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="window window--inner" aria-labelledby="queue-title">
+            <header class="title-bar">
+              <button class="close-box" type="button" aria-label="close" disabled></button>
+              <h2 class="title-bar__text" id="queue-title">Queue</h2>
+            </header>
+            <div class="window__body">
+              <ol class="queue" id="queue">
+                <li class="queue__empty">Queue is empty.</li>
+              </ol>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="status-bar" aria-live="polite" id="status">
+        Ready.
+      </footer>
+    </div>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
