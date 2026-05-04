@@ -114,6 +114,8 @@ const renderPlayer = () => {
     // If the CDN blocks (network error / 403), fall back to the open-on-
     // Kick card.
     if (c.videoUrl) {
+      // eslint-disable-next-line no-console
+      console.log("[kick debug] trying <video> src=", c.videoUrl);
       const video = document.createElement("video");
       video.src = c.videoUrl;
       video.controls = true;
@@ -122,8 +124,6 @@ const renderPlayer = () => {
       video.preload = "auto";
       if (c.thumbnailUrl) video.poster = c.thumbnailUrl;
       video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
-      // Native end-of-video event → advance after just the configured break,
-      // bypassing the duration+break timer fallback.
       video.addEventListener("ended", () => {
         cancelAdvance();
         const breakSec = parseInt(breakSlider.value, 10) || 3;
@@ -132,12 +132,21 @@ const renderPlayer = () => {
           else setStatus("End of queue.");
         }, breakSec * 1000);
       });
-      video.addEventListener("error", () => {
-        // CDN blocked the video — degrade to the static card.
+      video.addEventListener("error", (e) => {
+        // eslint-disable-next-line no-console
+        console.warn("[kick debug] <video> error", {
+          src: c.videoUrl,
+          networkState: video.networkState,
+          mediaError: video.error
+            ? { code: video.error.code, message: video.error.message }
+            : null,
+        });
         renderKickFallback(c);
       });
       player.appendChild(video);
     } else {
+      // eslint-disable-next-line no-console
+      console.warn("[kick debug] no video URL on clip — falling back to card", c._raw);
       renderKickFallback(c);
     }
   } else {

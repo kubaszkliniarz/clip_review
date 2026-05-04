@@ -4,14 +4,31 @@
 
 const API = "https://kick.com/api/v2";
 
+function pickVideoUrl(c) {
+  // Try every reasonable field — Kick has shifted shapes over the years.
+  const candidates = [
+    c.video_url,
+    c.clip_url_mp4,
+    c.mp4_url,
+    c.download_url,
+    c.media_url,
+    c.stream_url,
+    c.video?.url,
+    c.video?.src,
+    c.media?.url,
+    c.clip?.video_url,
+    c.urls?.mp4,
+  ];
+  for (const url of candidates) {
+    if (typeof url === "string" && url) return url;
+  }
+  return "";
+}
+
 function toClip(c, channelSlug) {
   const id = String(c.id || "");
   const channel = c.channel || {};
   const fallback = `https://kick.com/${channelSlug}/clips/${id}`;
-  // Kick's API exposes the underlying CDN video URL — try a few common
-  // field names. If present, we can play it via a <video> tag and skip
-  // the (XFO-blocked) iframe entirely.
-  const videoUrl = c.video_url || c.clip_url_mp4 || c.video?.url || "";
   return {
     provider: "kick",
     id,
@@ -20,10 +37,11 @@ function toClip(c, channelSlug) {
     durationSec: Number(c.duration || 0),
     thumbnailUrl: c.thumbnail_url || "",
     embedUrl: fallback,
-    videoUrl,
+    videoUrl: pickVideoUrl(c),
     url: c.clip_url || fallback,
     broadcasterName: channel.username || channel.slug || channelSlug,
     createdAt: c.created_at || "",
+    _raw: c, // dev-only: kept on the object so we can log it once
   };
 }
 
@@ -60,6 +78,16 @@ export async function getTopClips(channel, win, count = 50) {
     cursor = body.nextCursor || body.next_cursor || body.cursor || null;
     pages += 1;
     if (!cursor) break;
+  }
+
+  // One-off debug: dump the first raw clip + top-level keys so we can see
+  // what Kick is actually returning. Strip this once the right field names
+  // are pinned down.
+  if (all[0]) {
+    // eslint-disable-next-line no-console
+    console.log("[kick debug] first clip top-level keys:", Object.keys(all[0]));
+    // eslint-disable-next-line no-console
+    console.log("[kick debug] first clip full payload:", all[0]);
   }
 
   return all.slice(0, target).map((c) => toClip(c, channel));
