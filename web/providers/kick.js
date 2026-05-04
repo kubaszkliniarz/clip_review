@@ -41,7 +41,6 @@ function toClip(c, channelSlug) {
     url: c.clip_url || fallback,
     broadcasterName: channel.username || channel.slug || channelSlug,
     createdAt: c.created_at || "",
-    _raw: c, // dev-only: kept on the object so we can log it once
   };
 }
 
@@ -78,16 +77,6 @@ export async function getTopClips(channel, win, count = 50) {
     cursor = body.nextCursor || body.next_cursor || body.cursor || null;
     pages += 1;
     if (!cursor) break;
-  }
-
-  // One-off debug: dump the first raw clip + top-level keys so we can see
-  // what Kick is actually returning. Strip this once the right field names
-  // are pinned down.
-  if (all[0]) {
-    // eslint-disable-next-line no-console
-    console.log("[kick debug] first clip top-level keys:", Object.keys(all[0]));
-    // eslint-disable-next-line no-console
-    console.log("[kick debug] first clip full payload:", all[0]);
   }
 
   return all.slice(0, target).map((c) => toClip(c, channel));

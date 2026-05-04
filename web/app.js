@@ -26,11 +26,41 @@ const breakReadout = $("break-readout");
 const submitBtn = form.querySelector("button[type='submit']");
 
 // ---------- State ----------
-/** @type {Array<{provider:string,id:string,title:string,viewCount:number,durationSec:number,thumbnailUrl:string,embedUrl:string,url:string,broadcasterName:string,createdAt:string}>} */
+/** @type {Array<{provider:string,id:string,title:string,viewCount:number,durationSec:number,thumbnailUrl:string,embedUrl:string,videoUrl?:string,url:string,broadcasterName:string,createdAt:string,_raw?:object}>} */
 let clips = [];
 let activeIdx = -1;
 const played = new Set();
 let advanceTimer = null;
+let activeHls = null;
+let renderGen = 0; // monotonic — abandons stale async work after re-renders
+let hlsLoaderPromise = null;
+
+const HLS_CDN = "https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js";
+
+async function ensureHls() {
+  if (window.Hls) return window.Hls;
+  if (!hlsLoaderPromise) {
+    hlsLoaderPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = HLS_CDN;
+      s.onload = () => resolve(window.Hls);
+      s.onerror = () => reject(new Error(`failed to load hls.js from ${HLS_CDN}`));
+      document.head.appendChild(s);
+    });
+  }
+  return hlsLoaderPromise;
+}
+
+function destroyActiveHls() {
+  if (activeHls) {
+    try {
+      activeHls.destroy();
+    } catch {
+      /* ignore */
+    }
+    activeHls = null;
+  }
+}
 
 // ---------- Helpers ----------
 const setStatus = (msg) => {
@@ -94,6 +124,7 @@ const renderQueue = () => {
 
 const renderPlayer = () => {
   cancelAdvance();
+  destroyActiveHls();
   if (activeIdx < 0 || !clips[activeIdx]) {
     player.innerHTML = `
       <div class="player__placeholder">
@@ -108,45 +139,62 @@ const renderPlayer = () => {
   player.innerHTML = "";
 
   if (c.provider === "kick") {
-    // Kick sets X-Frame-Options: SAMEORIGIN, so we cannot iframe kick.com.
-    // BUT the API exposes the underlying CDN video URL — try playing that
-    // directly with a <video> tag (no XFO restriction on media files).
-    // If the CDN blocks (network error / 403), fall back to the open-on-
-    // Kick card.
     if (c.videoUrl) {
-      // eslint-disable-next-line no-console
-      console.log("[kick debug] trying <video> src=", c.videoUrl);
+      const gen = ++renderGen;
       const video = document.createElement("video");
-      video.src = c.videoUrl;
       video.controls = true;
       video.autoplay = true;
       video.playsInline = true;
       video.preload = "auto";
       if (c.thumbnailUrl) video.poster = c.thumbnailUrl;
       video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
-      video.addEventListener("ended", () => {
+
+      const onEnded = () => {
         cancelAdvance();
         const breakSec = parseInt(breakSlider.value, 10) || 3;
         advanceTimer = setTimeout(() => {
           if (activeIdx < clips.length - 1) goTo(activeIdx + 1);
           else setStatus("End of queue.");
         }, breakSec * 1000);
-      });
-      video.addEventListener("error", (e) => {
-        // eslint-disable-next-line no-console
-        console.warn("[kick debug] <video> error", {
-          src: c.videoUrl,
-          networkState: video.networkState,
-          mediaError: video.error
-            ? { code: video.error.code, message: video.error.message }
-            : null,
-        });
-        renderKickFallback(c);
-      });
+      };
+      video.addEventListener("ended", onEnded);
+
+      const isHls = /\.m3u8(\?|$)/i.test(c.videoUrl);
+      const nativeHls = video.canPlayType("application/vnd.apple.mpegurl");
+
+      if (isHls && !nativeHls) {
+        // Chrome/Firefox — need hls.js. Load lazily, then attach.
+        ensureHls()
+          .then((Hls) => {
+            if (gen !== renderGen) return; // user navigated away
+            if (!Hls || !Hls.isSupported()) {
+              renderKickFallback(c);
+              return;
+            }
+            const hls = new Hls();
+            hls.loadSource(c.videoUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.ERROR, (_evt, data) => {
+              if (gen !== renderGen) return;
+              if (data.fatal) renderKickFallback(c);
+            });
+            if (gen === renderGen) {
+              activeHls = hls;
+            } else {
+              hls.destroy();
+            }
+          })
+          .catch(() => {
+            if (gen === renderGen) renderKickFallback(c);
+          });
+      } else {
+        // Safari (native HLS) or a non-HLS URL.
+        video.src = c.videoUrl;
+        video.addEventListener("error", () => renderKickFallback(c));
+      }
+
       player.appendChild(video);
     } else {
-      // eslint-disable-next-line no-console
-      console.warn("[kick debug] no video URL on clip — falling back to card", c._raw);
       renderKickFallback(c);
     }
   } else {
