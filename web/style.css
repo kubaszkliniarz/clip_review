@@ -1,20 +1,19 @@
-/* Clip Review — Mac Classic / NeXT chrome (System 7/8 Platinum era).
+/* Clip Review — Mac System 7/8 Platinum chrome with a NeXT lean.
    Player iframes deliberately stay free of overlays — chrome only. */
 
 :root {
-  /* Platinum palette */
-  --bg-desktop: #777a7a;          /* dark stippled desktop */
-  --bg-window: #dcdcdc;           /* window body */
-  --bg-window-deep: #c4c4c4;      /* sunken inputs */
+  --bg-desktop: #777a7a;
+  --bg-window: #dcdcdc;
+  --bg-window-deep: #c4c4c4;
   --bg-titlebar-light: #f5f5f5;
   --bg-titlebar-dark: #9a9a9a;
   --fg: #000000;
   --fg-mute: #4a4a4a;
   --fg-disabled: #8a8a8a;
-  --accent: #2b2b2b;              /* near-black, NeXT-leaning */
+  --accent: #2b2b2b;
+  --accent-fg: #ffffff;
   --shadow: #00000044;
 
-  /* Bevels (1px crispy) */
   --bevel-light: #ffffff;
   --bevel-dark: #000000;
   --bevel-mid: #888888;
@@ -22,19 +21,18 @@
   --font-display: "Silkscreen", "Chicago", "ChicagoFLF", "Charcoal", monospace;
   --font-body: "Geneva", "Lucida Grande", "Verdana", system-ui, sans-serif;
   --font-mono: "Monaco", "Menlo", "Courier New", monospace;
+
+  --tile-w: 168px;
+  --tile-h: 144px;
+  --thumb-h: 94px;
+
+  --transition-quick: 120ms ease-out;
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
 
 body {
-  /* Stippled desktop pattern — Mac System 7 default desktop fill */
   background-color: var(--bg-desktop);
   background-image:
     radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
@@ -50,10 +48,10 @@ body {
   padding: 24px 16px 64px;
 }
 
-/* ---------- Layout shell ---------- */
+/* ---------- Layout ---------- */
 
 .desktop {
-  max-width: 980px;
+  width: min(94vw, 1400px);
   margin: 0 auto;
 }
 
@@ -70,7 +68,6 @@ body {
 }
 
 .window--root {
-  /* Outer "application window" */
   margin-bottom: 8px;
 }
 
@@ -86,7 +83,91 @@ body {
   padding: 14px;
 }
 
-/* ---------- Title bar (striped, with close box) ---------- */
+.window__body--queue {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+  padding: 10px;
+}
+
+/* Theatre mode: lock the viewport. Hide picker, queue, status bar.
+   The "Now playing" window fills 100dvh — order is title → clip name
+   → player (flexes to take remaining height) → controls. No page
+   scroll while engaged; toggling off restores normal scroll. */
+body.is-theatre {
+  overflow: hidden;
+  height: 100dvh;
+  padding: 0;
+  margin: 0;
+}
+
+body.is-theatre .window--picker,
+body.is-theatre .window--queue,
+body.is-theatre .status-bar {
+  display: none;
+}
+
+body.is-theatre .desktop {
+  width: 100vw;
+  height: 100dvh;
+  padding: 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body.is-theatre .window--root {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.is-theatre .window--root > .window__body {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.is-theatre .window--player {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.is-theatre .window--player > .window__body {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+body.is-theatre .player__meta {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+body.is-theatre .player {
+  flex: 1;
+  aspect-ratio: auto;
+  min-height: 0;
+  width: 100%;
+}
+
+body.is-theatre .player__controls {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* ---------- Title bar ---------- */
 
 .title-bar {
   position: relative;
@@ -113,9 +194,47 @@ body {
   letter-spacing: 0.04em;
   color: var(--fg);
   background: var(--bg-window);
-  /* Title sits on a small mat over the stripes — classic Mac trick */
-  border: 1px solid transparent;
   white-space: nowrap;
+}
+
+.title-bar__action {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  background: var(--bg-window);
+  color: var(--fg);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  cursor: default;
+}
+
+.title-bar__action:hover { background: #e6e6e6; }
+.title-bar__action[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow:
+    inset -1px -1px 0 var(--bevel-light),
+    inset 1px 1px 0 var(--bevel-mid);
+}
+
+.title-bar__count {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-mute);
+  background: var(--bg-window);
+  padding: 1px 6px;
+  border: 1px solid var(--bevel-mid);
 }
 
 .close-box {
@@ -130,24 +249,22 @@ body {
   border: 1px solid var(--bevel-dark);
   cursor: default;
 }
-
-.close-box:disabled {
-  opacity: 0.85;
-}
+.close-box:disabled { opacity: 0.85; }
 
 /* ---------- Form / fields ---------- */
 
 .form {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: 2fr 1fr 1fr;
   grid-template-areas:
-    "url window"
-    "actions actions";
+    "url window count"
+    "actions actions actions";
   gap: 12px;
 }
 
 .form .field:nth-of-type(1) { grid-area: url; }
 .form .field:nth-of-type(2) { grid-area: window; }
+.form .field:nth-of-type(3) { grid-area: count; }
 .form__actions { grid-area: actions; display: flex; gap: 8px; }
 
 .field {
@@ -170,7 +287,6 @@ body {
   padding: 6px 8px;
   background: #ffffff;
   color: var(--fg);
-  /* Sunken bevel — opposite of raised buttons */
   border: 1px solid var(--bevel-dark);
   box-shadow:
     inset 1px 1px 0 var(--bevel-mid),
@@ -180,13 +296,11 @@ body {
 }
 
 .input:focus {
-  /* Keep sunken bevel; just tighten outline as a focus cue */
   outline: 1px dotted var(--bevel-dark);
   outline-offset: -3px;
 }
 
 select.input {
-  /* Native arrow keeps the period feel. Force consistent height. */
   appearance: auto;
   height: 30px;
 }
@@ -202,7 +316,6 @@ select.input {
   background: var(--bg-window);
   color: var(--fg);
   border: 1px solid var(--bevel-dark);
-  /* Raised: white top/left highlight, mid bottom/right shade */
   box-shadow:
     inset 1px 1px 0 var(--bevel-light),
     inset -1px -1px 0 var(--bevel-mid);
@@ -211,12 +324,9 @@ select.input {
   user-select: none;
 }
 
-.button:hover:not(:disabled) {
-  background: #e6e6e6;
-}
+.button:hover:not(:disabled) { background: #e6e6e6; }
 
 .button:active:not(:disabled) {
-  /* Press-in: invert the bevel */
   box-shadow:
     inset -1px -1px 0 var(--bevel-light),
     inset 1px 1px 0 var(--bevel-mid);
@@ -229,7 +339,6 @@ select.input {
 }
 
 .button--primary {
-  /* Default-button thick black ring — Mac OS 8 hint */
   outline: 2px solid var(--bevel-dark);
   outline-offset: 1px;
   font-weight: 700;
@@ -273,92 +382,275 @@ select.input {
   padding: 16px;
 }
 
-.player__hint {
-  color: #888888;
-  font-size: 10px;
-}
+.player__hint { color: #888888; font-size: 10px; }
 
-.player__controls {
+.player__meta {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-/* ---------- Queue ---------- */
-
-.queue {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
   background: #ffffff;
   border: 1px solid var(--bevel-dark);
   box-shadow:
     inset 1px 1px 0 var(--bevel-mid),
     inset -1px -1px 0 var(--bevel-light);
-  max-height: 320px;
-  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
-.queue li {
-  display: grid;
-  grid-template-columns: 24px 96px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-bottom: 1px dotted #aaaaaa;
-  font-size: 13px;
-}
-
-.queue li:last-child {
-  border-bottom: 0;
-}
-
-.queue li.is-active {
-  background: var(--accent);
-  color: #ffffff;
-}
-
-.queue li.is-active .queue__views {
-  color: #cccccc;
-}
-
-.queue__index {
-  font-family: var(--font-display);
-  font-size: 10px;
-  text-align: right;
-  color: var(--fg-mute);
-}
-
-.queue li.is-active .queue__index {
-  color: #ffffff;
-}
-
-.queue__thumb {
-  width: 96px;
-  height: 54px;
-  background: #222222;
-  border: 1px solid var(--bevel-dark);
-  object-fit: cover;
-  display: block;
-}
-
-.queue__title {
+.player__title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 
-.queue__views {
-  font-family: var(--font-mono);
-  font-size: 11px;
+.player__views {
   color: var(--fg-mute);
   white-space: nowrap;
 }
 
-.queue__empty {
-  display: block;
-  padding: 18px;
+.player__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.player__nav {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------- Break slider ---------- */
+
+.break-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.break-control__readout {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 28px;
+  text-align: right;
+  background: #ffffff;
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+  padding: 1px 6px;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 14px;
+  background: transparent;
+  cursor: default;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--bg-window-deep);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+}
+.slider::-moz-range-track {
+  height: 6px;
+  background: var(--bg-window-deep);
+  border: 1px solid var(--bevel-dark);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  border-radius: 0;
+}
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 18px;
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  border-radius: 0;
+}
+
+/* ---------- Queue (horizontal film strip) ---------- */
+
+.queue-nav {
+  font-family: var(--font-display);
+  font-size: 16px;
+  width: 32px;
+  background: var(--bg-window);
+  color: var(--fg);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  cursor: default;
+  user-select: none;
+}
+.queue-nav:hover:not(:disabled) { background: #e6e6e6; }
+.queue-nav:active:not(:disabled) {
+  box-shadow:
+    inset -1px -1px 0 var(--bevel-light),
+    inset 1px 1px 0 var(--bevel-mid);
+  background: var(--bg-window-deep);
+}
+.queue-nav:disabled { color: var(--fg-disabled); cursor: not-allowed; }
+
+.queue-strip-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-mid),
+    inset -1px -1px 0 var(--bevel-light);
+}
+
+.queue-strip {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  /* hide native scrollbar; we use the arrow buttons */
+  scrollbar-color: var(--bevel-mid) transparent;
+}
+
+.queue-strip::-webkit-scrollbar { height: 8px; }
+.queue-strip::-webkit-scrollbar-track {
+  background: var(--bg-window-deep);
+  border-top: 1px solid var(--bevel-mid);
+}
+.queue-strip::-webkit-scrollbar-thumb {
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+}
+
+.queue-strip.is-dragging {
+  scroll-behavior: auto;
+  cursor: grabbing;
+  user-select: none;
+}
+
+.queue-tile {
+  flex: 0 0 var(--tile-w);
+  width: var(--tile-w);
+  height: var(--tile-h);
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.queue-tile:hover { background: #e6e6e6; }
+
+.queue-tile.is-active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow:
+    inset -1px -1px 0 var(--bevel-light),
+    inset 1px 1px 0 var(--bevel-mid),
+    0 0 0 2px var(--bevel-dark);
+}
+
+.queue-tile.is-played:not(.is-active) {
+  opacity: 0.55;
+}
+
+.queue-tile.is-played:not(.is-active) .queue-tile__index::before {
+  content: "✓ ";
+}
+
+.queue-tile__thumb {
+  width: 100%;
+  height: var(--thumb-h);
+  background: #1a1a1a center/cover no-repeat;
+  border-bottom: 1px solid var(--bevel-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: #ffffff77;
+  position: relative;
+}
+
+.queue-tile__index {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  padding: 1px 4px;
+  border: 1px solid var(--bevel-dark);
+}
+
+.queue-tile.is-active .queue-tile__index {
+  background: var(--accent-fg);
+  color: var(--accent);
+}
+
+.queue-tile__body {
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  min-height: 0;
+}
+
+.queue-tile__title {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.2;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.queue-tile__views {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-mute);
+}
+
+.queue-tile.is-active .queue-tile__views { color: #cccccc; }
+
+.queue-strip__empty {
+  flex: 1;
+  padding: 22px;
   text-align: center;
   font-style: italic;
   color: var(--fg-mute);
@@ -382,40 +674,21 @@ select.input {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 720px) {
-  body {
-    padding: 12px 8px 48px;
-    font-size: 13px;
-  }
-
-  .window--inner {
-    margin: 8px;
-  }
-
-  .window__body {
-    padding: 10px;
-  }
+  body { padding: 12px 8px 48px; font-size: 13px; }
+  .window--inner { margin: 8px; }
+  .window__body { padding: 10px; }
 
   .form {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "url"
-      "window"
-      "actions";
+    grid-template-areas: "url" "window" "count" "actions";
   }
 
-  .queue li {
-    grid-template-columns: 24px 64px 1fr;
-    grid-template-rows: auto auto;
-    row-gap: 2px;
+  :root {
+    --tile-w: 132px;
+    --tile-h: 124px;
+    --thumb-h: 76px;
   }
 
-  .queue__thumb {
-    width: 64px;
-    height: 36px;
-  }
-
-  .queue__views {
-    grid-column: 2 / -1;
-    font-size: 10px;
-  }
+  .player__controls { gap: 12px; }
+  .slider { width: 110px; }
 }

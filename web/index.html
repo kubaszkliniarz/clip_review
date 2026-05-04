@@ -21,7 +21,11 @@
         </header>
 
         <div class="window__body">
-          <section class="window window--inner" aria-labelledby="input-title">
+          <section
+            class="window window--inner window--picker"
+            id="picker"
+            aria-labelledby="input-title"
+          >
             <header class="title-bar">
               <button class="close-box" type="button" aria-label="close" disabled></button>
               <h2 class="title-bar__text" id="input-title">Pick a streamer</h2>
@@ -50,6 +54,15 @@
                   </select>
                 </label>
 
+                <label class="field">
+                  <span class="field__label">How many</span>
+                  <select class="input" name="count" id="count">
+                    <option value="20">20 clips</option>
+                    <option value="50" selected>50 clips</option>
+                    <option value="100">100 clips</option>
+                  </select>
+                </label>
+
                 <div class="form__actions">
                   <button class="button button--primary" type="submit">Load clips</button>
                 </div>
@@ -57,35 +70,85 @@
             </div>
           </section>
 
-          <section class="window window--inner" aria-labelledby="player-title">
+          <section class="window window--inner window--player" aria-labelledby="player-title">
             <header class="title-bar">
               <button class="close-box" type="button" aria-label="close" disabled></button>
               <h2 class="title-bar__text" id="player-title">Now playing</h2>
+              <button
+                class="title-bar__action"
+                type="button"
+                id="btn-theatre"
+                aria-pressed="false"
+                title="Toggle theatre mode"
+              >
+                Theatre ⛶
+              </button>
             </header>
             <div class="window__body">
+              <div class="player__meta" id="player-meta" hidden>
+                <span class="player__title" id="player-title-text">—</span>
+                <span class="player__views" id="player-views">—</span>
+              </div>
+
               <div class="player" id="player">
                 <div class="player__placeholder">
                   <p>No clip loaded.</p>
                   <p class="player__hint">Pick a streamer above to start.</p>
                 </div>
               </div>
+
               <div class="player__controls">
-                <button class="button" type="button" id="btn-prev" disabled>« Prev</button>
-                <button class="button" type="button" id="btn-skip" disabled>Skip ▸</button>
-                <button class="button" type="button" id="btn-next" disabled>Next »</button>
+                <div class="player__nav">
+                  <button class="button" type="button" id="btn-prev" disabled>« Prev</button>
+                  <button class="button" type="button" id="btn-skip" disabled>Skip ▸</button>
+                  <button class="button" type="button" id="btn-next" disabled>Next »</button>
+                </div>
+
+                <label class="break-control">
+                  <span class="field__label">Break</span>
+                  <input
+                    class="slider"
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value="3"
+                    id="break"
+                  />
+                  <span class="break-control__readout" id="break-readout">3s</span>
+                </label>
               </div>
             </div>
           </section>
 
-          <section class="window window--inner" aria-labelledby="queue-title">
+          <section class="window window--inner window--queue" aria-labelledby="queue-title">
             <header class="title-bar">
               <button class="close-box" type="button" aria-label="close" disabled></button>
               <h2 class="title-bar__text" id="queue-title">Queue</h2>
+              <span class="title-bar__count" id="queue-count">0 clips</span>
             </header>
-            <div class="window__body">
-              <ol class="queue" id="queue">
-                <li class="queue__empty">Queue is empty.</li>
-              </ol>
+            <div class="window__body window__body--queue">
+              <button
+                class="queue-nav queue-nav--left"
+                type="button"
+                id="btn-queue-prev"
+                aria-label="scroll queue left"
+              >
+                «
+              </button>
+              <div class="queue-strip-wrap">
+                <ol class="queue-strip" id="queue">
+                  <li class="queue-strip__empty">Queue is empty. Load a streamer to fill it.</li>
+                </ol>
+              </div>
+              <button
+                class="queue-nav queue-nav--right"
+                type="button"
+                id="btn-queue-next"
+                aria-label="scroll queue right"
+              >
+                »
+              </button>
             </div>
           </section>
         </div>
