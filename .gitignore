@@ -225,6 +225,9 @@ TODO.md
 *.local.md
 .scratch/
 
+# CI-generated token (minted by scripts/mint_twitch_token.py during deploy)
+web/twitch_token.json
+
 # Claude Code local
 .claude/settings.local.json
 .claude/local/
