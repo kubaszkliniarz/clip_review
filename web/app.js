@@ -108,29 +108,38 @@ const renderPlayer = () => {
   player.innerHTML = "";
 
   if (c.provider === "kick") {
-    // Kick sets X-Frame-Options: SAMEORIGIN on every page, so we cannot
-    // iframe-embed clips from a github.io origin. Render a "browse" card
-    // with a button that opens the clip in a new tab. Auto-advance keeps
-    // ticking through the queue even without the iframe.
-    const fallback = document.createElement("div");
-    fallback.className = "player__fallback";
-    fallback.innerHTML = `
-      ${
-        c.thumbnailUrl
-          ? `<img src="${escapeHtml(c.thumbnailUrl)}" alt="" class="player__fallback-thumb" />`
-          : ""
-      }
-      <div class="player__fallback-overlay">
-        <p class="player__fallback-title">${escapeHtml(c.title || "untitled clip")}</p>
-        <p class="player__fallback-msg">
-          Kick blocks iframe embeds from other sites.
-          Auto-advance still works; tap below to watch on Kick.
-        </p>
-        <a class="button button--primary" target="_blank" rel="noopener" href="${escapeHtml(c.url)}">
-          Open on Kick ↗
-        </a>
-      </div>`;
-    player.appendChild(fallback);
+    // Kick sets X-Frame-Options: SAMEORIGIN, so we cannot iframe kick.com.
+    // BUT the API exposes the underlying CDN video URL — try playing that
+    // directly with a <video> tag (no XFO restriction on media files).
+    // If the CDN blocks (network error / 403), fall back to the open-on-
+    // Kick card.
+    if (c.videoUrl) {
+      const video = document.createElement("video");
+      video.src = c.videoUrl;
+      video.controls = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      if (c.thumbnailUrl) video.poster = c.thumbnailUrl;
+      video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
+      // Native end-of-video event → advance after just the configured break,
+      // bypassing the duration+break timer fallback.
+      video.addEventListener("ended", () => {
+        cancelAdvance();
+        const breakSec = parseInt(breakSlider.value, 10) || 3;
+        advanceTimer = setTimeout(() => {
+          if (activeIdx < clips.length - 1) goTo(activeIdx + 1);
+          else setStatus("End of queue.");
+        }, breakSec * 1000);
+      });
+      video.addEventListener("error", () => {
+        // CDN blocked the video — degrade to the static card.
+        renderKickFallback(c);
+      });
+      player.appendChild(video);
+    } else {
+      renderKickFallback(c);
+    }
   } else {
     // Twitch — real iframe embed.
     const frame = document.createElement("iframe");
@@ -151,6 +160,29 @@ const renderPlayer = () => {
   btnRefresh.disabled = false;
 
   scheduleAdvance();
+};
+
+const renderKickFallback = (c) => {
+  player.innerHTML = "";
+  const fallback = document.createElement("div");
+  fallback.className = "player__fallback";
+  fallback.innerHTML = `
+    ${
+      c.thumbnailUrl
+        ? `<img src="${escapeHtml(c.thumbnailUrl)}" alt="" class="player__fallback-thumb" />`
+        : ""
+    }
+    <div class="player__fallback-overlay">
+      <p class="player__fallback-title">${escapeHtml(c.title || "untitled clip")}</p>
+      <p class="player__fallback-msg">
+        Kick's CDN refused to serve this clip directly to the browser.
+        Auto-advance still works; tap below to watch on Kick.
+      </p>
+      <a class="button button--primary" target="_blank" rel="noopener" href="${escapeHtml(c.url)}">
+        Open on Kick ↗
+      </a>
+    </div>`;
+  player.appendChild(fallback);
 };
 
 const renderError = (title, hint) => {
