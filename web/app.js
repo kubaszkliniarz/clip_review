@@ -4,9 +4,6 @@ import { parseStreamer } from "./providers/parse.js";
 import * as twitch from "./providers/twitch.js";
 import * as kick from "./providers/kick.js";
 
-const APP_BUILD = "2026-05-04-hls-fix-3";
-console.log("[app] build", APP_BUILD);
-
 // ---------- DOM refs ----------
 const $ = (id) => document.getElementById(id);
 const status = $("status");
@@ -142,12 +139,10 @@ const renderPlayer = () => {
   player.innerHTML = "";
 
   if (c.provider === "kick") {
-    if (c.videoUrl) {
+    if (!c.videoUrl) {
+      renderKickFallback(c);
+    } else {
       const gen = ++renderGen;
-      const log = (...a) => console.log("[kick]", ...a);
-      const warn = (...a) => console.warn("[kick]", ...a);
-      log("playback start, videoUrl=", c.videoUrl);
-
       const video = document.createElement("video");
       video.controls = true;
       video.autoplay = true;
@@ -156,90 +151,54 @@ const renderPlayer = () => {
       if (c.thumbnailUrl) video.poster = c.thumbnailUrl;
       video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;background:#000;";
 
-      const onEnded = () => {
+      video.addEventListener("ended", () => {
         cancelAdvance();
         const breakSec = parseInt(breakSlider.value, 10) || 3;
         advanceTimer = setTimeout(() => {
           if (activeIdx < clips.length - 1) goTo(activeIdx + 1);
           else setStatus("End of queue.");
         }, breakSec * 1000);
-      };
-      video.addEventListener("ended", onEnded);
+      });
 
       const isHls = /\.m3u8(\?|$)/i.test(c.videoUrl);
-      log("isHls=", isHls);
-
       if (isHls) {
-        // Try hls.js first. Chrome's canPlayType lies about native HLS
-        // ("maybe") even though it can't actually play it — only iOS
-        // Safari truly plays HLS natively, and on iOS hls.js returns
-        // false from isSupported() (no MSE) so we fall through.
-        log("loading hls.js…");
+        // Always try hls.js first. Chrome's canPlayType returns "maybe"
+        // for HLS even though it can't actually play it natively — only
+        // iOS Safari truly plays HLS natively, and there hls.js's
+        // isSupported() is false (no MSE) so we fall through to native.
         ensureHls()
           .then((Hls) => {
-            if (gen !== renderGen) {
-              log("stale gen, abandoning hls.js attach");
-              return;
-            }
-            log("hls.js loaded, version=", Hls.version, "supported=", Hls.isSupported());
+            if (gen !== renderGen) return;
             if (Hls && Hls.isSupported()) {
               const hls = new Hls({ debug: false });
               hls.loadSource(c.videoUrl);
               hls.attachMedia(video);
-              hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) =>
-                log("MANIFEST_PARSED, levels=", data.levels?.length)
-              );
-              hls.on(Hls.Events.LEVEL_LOADED, () => log("LEVEL_LOADED"));
               hls.on(Hls.Events.ERROR, (_evt, data) => {
-                warn("ERROR", {
-                  type: data.type,
-                  details: data.details,
-                  fatal: data.fatal,
-                  response: data.response,
-                  reason: data.reason,
-                  err: data.err?.message,
-                });
                 if (gen !== renderGen) return;
                 if (data.fatal) {
-                  warn("fatal HLS error → fallback");
+                  console.warn("[kick] fatal HLS error", data.type, data.details);
                   renderKickFallback(c);
                 }
               });
-              if (gen === renderGen) {
-                activeHls = hls;
-              } else {
-                hls.destroy();
-              }
+              if (gen === renderGen) activeHls = hls;
+              else hls.destroy();
             } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-              // Real native HLS (iOS Safari).
-              log("hls.js unsupported but native HLS available → video.src");
               video.src = c.videoUrl;
-              video.addEventListener("error", () => {
-                warn("native <video> error", video.error);
-                renderKickFallback(c);
-              });
+              video.addEventListener("error", () => renderKickFallback(c));
             } else {
-              warn("no HLS playback path available → fallback");
               renderKickFallback(c);
             }
           })
           .catch((err) => {
-            warn("hls.js load failed", err);
+            console.warn("[kick] hls.js load failed", err);
             if (gen === renderGen) renderKickFallback(c);
           });
       } else {
-        // Non-HLS URL (rare for Kick) — try direct.
         video.src = c.videoUrl;
-        video.addEventListener("error", () => {
-          warn("native <video> error", video.error);
-          renderKickFallback(c);
-        });
+        video.addEventListener("error", () => renderKickFallback(c));
       }
 
       player.appendChild(video);
-    } else {
-      console.warn("[kick] no videoUrl on clip → fallback");
-      renderKickFallback(c);
     }
   } else {
     // Twitch — real iframe embed.
