@@ -1,0 +1,60 @@
+name: deploy
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    # Refresh Twitch token every 12 hours (token lasts ~60d but we rotate often).
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.14
+        run: uv python install 3.14
+
+      - name: Install runtime deps
+        run: |
+          uv venv --python 3.14
+          uv pip sync requirements.txt
+          uv pip install -e . --no-deps
+
+      - name: Mint Twitch token (skip silently if no creds)
+        continue-on-error: true
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+        run: .venv/bin/python -m clip_review.scripts.mint_twitch_token web/twitch_token.json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static bundle
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
