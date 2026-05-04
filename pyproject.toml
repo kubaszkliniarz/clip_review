@@ -1,0 +1,58 @@
+[project]
+name = "clip-review"
+version = "0.0.1"
+description = "Back-to-back Twitch and Kick clip player. Static site; Python is build/CI only."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "kubaszkliniarz" }]
+dynamic = ["dependencies", "optional-dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.in"] }
+optional-dependencies = { dev = { file = ["requirements-dev.in"] } }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+extend-exclude = [".claude", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle + pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "N",             # pep8-naming
+    "SIM",           # simplify
+    "RUF",           # ruff-specific
+    "TID",           # tidy imports
+    "PTH",           # pathlib
+    "PIE",           # misc
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # asserts ok in tests
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+files = ["src", "tests"]
+exclude = ["\\.claude/", "\\.venv/", "build/", "dist/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+asyncio_mode = "auto"
