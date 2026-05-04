@@ -20,6 +20,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
 
       - name: Install Python 3.14
         run: uv python install 3.14
