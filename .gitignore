@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local planning / scratch notes (do not commit)
+PLANNING.md
+NOTES.md
+SCRATCH.md
+TODO.md
+*.local.md
+.scratch/
+
+# Claude Code local
+.claude/settings.local.json
+.claude/local/
+
+# Secrets / env (extra paranoia on top of generic .env)
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+credentials.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
