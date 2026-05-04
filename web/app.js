@@ -98,23 +98,49 @@ const renderPlayer = () => {
     player.innerHTML = `
       <div class="player__placeholder">
         <p>No clip loaded.</p>
-        <p class="player__hint">Pick a streamer above to start.</p>
+        <p class="player__hint">Pick a provider, type a streamer, hit Load clips.</p>
       </div>`;
     playerMeta.hidden = true;
     [btnPrev, btnSkip, btnNext, btnRefresh].forEach((b) => (b.disabled = true));
     return;
   }
   const c = clips[activeIdx];
-  // Tear down any previous iframe and create a fresh one — also acts as the
-  // refresh implementation when the same active idx is re-rendered.
   player.innerHTML = "";
-  const frame = document.createElement("iframe");
-  frame.src = c.embedUrl;
-  frame.allow = "autoplay; fullscreen; clipboard-write; encrypted-media";
-  frame.allowFullscreen = true;
-  frame.referrerPolicy = "origin";
-  frame.title = c.title || "clip";
-  player.appendChild(frame);
+
+  if (c.provider === "kick") {
+    // Kick sets X-Frame-Options: SAMEORIGIN on every page, so we cannot
+    // iframe-embed clips from a github.io origin. Render a "browse" card
+    // with a button that opens the clip in a new tab. Auto-advance keeps
+    // ticking through the queue even without the iframe.
+    const fallback = document.createElement("div");
+    fallback.className = "player__fallback";
+    fallback.innerHTML = `
+      ${
+        c.thumbnailUrl
+          ? `<img src="${escapeHtml(c.thumbnailUrl)}" alt="" class="player__fallback-thumb" />`
+          : ""
+      }
+      <div class="player__fallback-overlay">
+        <p class="player__fallback-title">${escapeHtml(c.title || "untitled clip")}</p>
+        <p class="player__fallback-msg">
+          Kick blocks iframe embeds from other sites.
+          Auto-advance still works; tap below to watch on Kick.
+        </p>
+        <a class="button button--primary" target="_blank" rel="noopener" href="${escapeHtml(c.url)}">
+          Open on Kick ↗
+        </a>
+      </div>`;
+    player.appendChild(fallback);
+  } else {
+    // Twitch — real iframe embed.
+    const frame = document.createElement("iframe");
+    frame.src = c.embedUrl;
+    frame.allow = "autoplay; fullscreen; clipboard-write; encrypted-media";
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = "origin";
+    frame.title = c.title || "clip";
+    player.appendChild(frame);
+  }
 
   playerMeta.hidden = false;
   playerTitle.textContent = c.title;
@@ -125,6 +151,17 @@ const renderPlayer = () => {
   btnRefresh.disabled = false;
 
   scheduleAdvance();
+};
+
+const renderError = (title, hint) => {
+  cancelAdvance();
+  player.innerHTML = `
+    <div class="player__placeholder player__placeholder--error">
+      <p class="player__error-title">${escapeHtml(title)}</p>
+      ${hint ? `<p class="player__hint">${escapeHtml(hint)}</p>` : ""}
+    </div>`;
+  playerMeta.hidden = true;
+  [btnPrev, btnSkip, btnNext, btnRefresh].forEach((b) => (b.disabled = true));
 };
 
 const scrollQueueToActive = () => {
@@ -199,38 +236,56 @@ queueEl.addEventListener("click", (e) => {
 });
 
 // ---------- Drag-to-scroll ----------
+// Capture only when actual drag movement happens — a plain click never
+// engages pointer capture, so the click handler above always fires for taps.
+const DRAG_THRESHOLD_PX = 5;
 let dragState = null;
 queueEl.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
   dragState = {
+    pointerId: e.pointerId,
     startX: e.clientX,
     startScroll: queueEl.scrollLeft,
+    captured: false,
     moved: false,
   };
-  queueEl.setPointerCapture(e.pointerId);
-  queueEl.classList.add("is-dragging");
 });
 queueEl.addEventListener("pointermove", (e) => {
-  if (!dragState) return;
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
   const dx = e.clientX - dragState.startX;
-  if (Math.abs(dx) > 4) dragState.moved = true;
-  queueEl.scrollLeft = dragState.startScroll - dx;
+  if (!dragState.captured && Math.abs(dx) >= DRAG_THRESHOLD_PX) {
+    dragState.captured = true;
+    dragState.moved = true;
+    try {
+      queueEl.setPointerCapture(e.pointerId);
+    } catch {
+      /* not all browsers / element types */
+    }
+    queueEl.classList.add("is-dragging");
+  }
+  if (dragState.captured) {
+    queueEl.scrollLeft = dragState.startScroll - dx;
+  }
 });
 const endDrag = (e) => {
-  if (!dragState) return;
-  queueEl.classList.remove("is-dragging");
-  suppressClick = dragState.moved;
-  dragState = null;
-  if (e && e.pointerId !== undefined) {
+  if (!dragState || (e && e.pointerId !== dragState.pointerId)) return;
+  const wasDrag = dragState.moved;
+  if (dragState.captured) {
+    queueEl.classList.remove("is-dragging");
     try {
-      queueEl.releasePointerCapture(e.pointerId);
+      queueEl.releasePointerCapture(dragState.pointerId);
     } catch {
-      // already released
+      /* already released */
     }
   }
-  setTimeout(() => {
-    suppressClick = false;
-  }, 0);
+  dragState = null;
+  if (wasDrag) {
+    suppressClick = true;
+    // Reset after the synthesized click event has fired.
+    setTimeout(() => {
+      suppressClick = false;
+    }, 0);
+  }
 };
 queueEl.addEventListener("pointerup", endDrag);
 queueEl.addEventListener("pointercancel", endDrag);
@@ -257,11 +312,14 @@ form.addEventListener("submit", async (e) => {
   const raw = String(data.get("streamer") || "").trim();
   const win = String(data.get("window") || "week");
   const count = Number(data.get("count") || 50);
+  const chosenProvider = String(data.get("provider") || "twitch");
   if (!raw) return;
 
+  // Use the radio's value as the fallback when the input is a bare login.
+  // A pasted URL like twitch.tv/foo still wins over the radio.
   let ref;
   try {
-    ref = parseStreamer(raw);
+    ref = parseStreamer(raw, chosenProvider);
   } catch (err) {
     setStatus(`Could not parse streamer: ${err.message}`);
     return;
@@ -281,17 +339,41 @@ form.addEventListener("submit", async (e) => {
     const fetched = await provider.getTopClips(ref.login, win, count);
     clips = fetched;
     if (!clips.length) {
-      setStatus(`No clips found for ${ref.provider}/${ref.login} in the last ${win}.`);
-      renderQueue();
+      const msg = `No clips found for ${ref.provider}/${ref.login} in the last ${win}.`;
+      setStatus(msg);
+      renderError(msg, "Try a different window or check the spelling.");
       return;
     }
     activeIdx = 0;
     renderQueue();
     renderPlayer();
     queueEl.scrollLeft = 0;
-    setStatus(`Loaded ${clips.length} clips. Playing #1 — ${clips[0].title}`);
+    const requested = count;
+    const got = clips.length;
+    const summary =
+      got < requested
+        ? `Loaded ${got} clips (provider returned fewer than ${requested} requested).`
+        : `Loaded ${got} clips.`;
+    setStatus(`${summary} Playing #1 — ${clips[0].title}`);
   } catch (err) {
     setStatus(`Failed: ${err.message}`);
+    // Surface specific known errors with helpful hints
+    if (/twitch_token\.json/i.test(err.message) || /No Twitch token bundled/i.test(err.message)) {
+      renderError(
+        "Twitch token missing.",
+        "The site needs web/twitch_token.json. In CI it's minted from secrets; for local dev, run: " +
+          "TWITCH_CLIENT_ID=... TWITCH_CLIENT_SECRET=... .venv/bin/python -m " +
+          "clip_review.scripts.mint_twitch_token web/twitch_token.json"
+      );
+    } else if (ref.provider === "kick") {
+      renderError(
+        "Kick request blocked.",
+        "Kick's CDN often blocks browser fetches from third-party origins. " +
+          "This is a Kick-side restriction — there's no fix without a backend proxy."
+      );
+    } else {
+      renderError(`Failed: ${err.message}`, "");
+    }
   } finally {
     submitBtn.disabled = false;
   }

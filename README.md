@@ -64,9 +64,18 @@ status bar.
 
 ## Caveats
 
-- **Kick CORS** — Kick's public clip endpoint may reject browser requests
-  from origins other than `kick.com`. If that happens, the only fix is a
-  small proxy server; this repo doesn't run one. Twitch is unaffected.
+- **Kick is browse-only.** Kick serves all of `kick.com/*` with
+  `X-Frame-Options: SAMEORIGIN`, so we cannot iframe-embed Kick clips
+  from any third-party origin. The site falls back to a "browse" card
+  per Kick clip with the thumbnail, title, view count, and an *Open on
+  Kick* link — auto-advance still ticks through the queue, but each
+  clip plays in a new tab on Kick itself.
+  Kick's API is also fronted by Cloudflare's bot protection, so the
+  initial channel fetch can fail with a 403 unless the visitor's browser
+  has a valid `__cf_bm` cookie from a prior Kick visit. There's no
+  client-side fix for either restriction; making Kick "play in-page"
+  would require a backend proxy that this static deploy doesn't have.
+  **For full playback support, use Twitch.**
 - **Twitch autoplay with sound** depends on the browser's autoplay policy.
   Clicking *Load clips* counts as a user gesture, which usually unblocks it.
 - **Embedded clip auto-advance** is timer-driven (`duration + break`), not

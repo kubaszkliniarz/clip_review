@@ -32,14 +32,26 @@
             </header>
             <div class="window__body">
               <form class="form" id="streamer-form">
+                <fieldset class="provider-picker">
+                  <legend class="field__label">Provider</legend>
+                  <label class="radio">
+                    <input type="radio" name="provider" value="twitch" checked />
+                    <span>Twitch</span>
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="provider" value="kick" />
+                    <span>Kick</span>
+                  </label>
+                </fieldset>
+
                 <label class="field">
-                  <span class="field__label">URL or name</span>
+                  <span class="field__label">Streamer username</span>
                   <input
                     class="input"
                     type="text"
                     name="streamer"
                     id="streamer"
-                    placeholder="twitch.tv/streamername  or  kick.com/streamername"
+                    placeholder="forsen — or paste a full twitch.tv / kick.com URL"
                     autocomplete="off"
                     required
                   />

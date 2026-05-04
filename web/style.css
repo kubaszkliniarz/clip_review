@@ -255,17 +255,49 @@ body.is-theatre .player__controls {
 
 .form {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: auto 2fr 1fr 1fr;
   grid-template-areas:
-    "url window count"
-    "actions actions actions";
+    "provider url window count"
+    "actions actions actions actions";
   gap: 12px;
+  align-items: end;
 }
 
+.provider-picker { grid-area: provider; }
 .form .field:nth-of-type(1) { grid-area: url; }
 .form .field:nth-of-type(2) { grid-area: window; }
 .form .field:nth-of-type(3) { grid-area: count; }
 .form__actions { grid-area: actions; display: flex; gap: 8px; }
+
+.provider-picker {
+  margin: 0;
+  padding: 6px 10px 8px;
+  background: var(--bg-window);
+  border: 1px solid var(--bevel-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--bevel-light),
+    inset -1px -1px 0 var(--bevel-mid);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provider-picker legend {
+  padding: 0 4px;
+  margin-left: -4px;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: default;
+}
+
+.radio input[type="radio"] {
+  margin: 0;
+}
 
 .field {
   display: flex;
@@ -378,11 +410,74 @@ select.input {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   padding: 16px;
 }
 
-.player__hint { color: #888888; font-size: 10px; }
+.player__placeholder--error {
+  background: #2b1414;
+  color: #ffd0d0;
+}
+
+.player__error-title {
+  font-size: 13px;
+  margin: 0;
+}
+
+.player__hint {
+  color: #aaaaaa;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  max-width: 60ch;
+  line-height: 1.4;
+}
+
+/* Kick fallback (cannot iframe) */
+.player__fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player__fallback-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.45);
+}
+
+.player__fallback-overlay {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: #ffffff;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 70ch;
+}
+
+.player__fallback-title {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.player__fallback-msg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #cccccc;
+  margin: 0;
+  line-height: 1.45;
+}
 
 .player__meta {
   display: flex;
@@ -688,7 +783,7 @@ select.input {
 
   .form {
     grid-template-columns: 1fr;
-    grid-template-areas: "url" "window" "count" "actions";
+    grid-template-areas: "provider" "url" "window" "count" "actions";
   }
 
   :root {
