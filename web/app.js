@@ -4,7 +4,7 @@ import { parseStreamer } from "./providers/parse.js";
 import * as twitch from "./providers/twitch.js";
 import * as kick from "./providers/kick.js";
 
-const APP_BUILD = "2026-05-04-hls-debug-2";
+const APP_BUILD = "2026-05-04-hls-fix-3";
 console.log("[app] build", APP_BUILD);
 
 // ---------- DOM refs ----------
@@ -167,10 +167,13 @@ const renderPlayer = () => {
       video.addEventListener("ended", onEnded);
 
       const isHls = /\.m3u8(\?|$)/i.test(c.videoUrl);
-      const nativeHls = video.canPlayType("application/vnd.apple.mpegurl");
-      log("isHls=", isHls, "nativeHls=", nativeHls);
+      log("isHls=", isHls);
 
-      if (isHls && !nativeHls) {
+      if (isHls) {
+        // Try hls.js first. Chrome's canPlayType lies about native HLS
+        // ("maybe") even though it can't actually play it — only iOS
+        // Safari truly plays HLS natively, and on iOS hls.js returns
+        // false from isSupported() (no MSE) so we fall through.
         log("loading hls.js…");
         ensureHls()
           .then((Hls) => {
@@ -179,37 +182,45 @@ const renderPlayer = () => {
               return;
             }
             log("hls.js loaded, version=", Hls.version, "supported=", Hls.isSupported());
-            if (!Hls || !Hls.isSupported()) {
-              warn("hls.js not supported in this browser → fallback");
-              renderKickFallback(c);
-              return;
-            }
-            const hls = new Hls({ debug: false });
-            hls.loadSource(c.videoUrl);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) =>
-              log("MANIFEST_PARSED, levels=", data.levels?.length)
-            );
-            hls.on(Hls.Events.LEVEL_LOADED, () => log("LEVEL_LOADED"));
-            hls.on(Hls.Events.ERROR, (_evt, data) => {
-              warn("ERROR", {
-                type: data.type,
-                details: data.details,
-                fatal: data.fatal,
-                response: data.response,
-                reason: data.reason,
-                err: data.err?.message,
+            if (Hls && Hls.isSupported()) {
+              const hls = new Hls({ debug: false });
+              hls.loadSource(c.videoUrl);
+              hls.attachMedia(video);
+              hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) =>
+                log("MANIFEST_PARSED, levels=", data.levels?.length)
+              );
+              hls.on(Hls.Events.LEVEL_LOADED, () => log("LEVEL_LOADED"));
+              hls.on(Hls.Events.ERROR, (_evt, data) => {
+                warn("ERROR", {
+                  type: data.type,
+                  details: data.details,
+                  fatal: data.fatal,
+                  response: data.response,
+                  reason: data.reason,
+                  err: data.err?.message,
+                });
+                if (gen !== renderGen) return;
+                if (data.fatal) {
+                  warn("fatal HLS error → fallback");
+                  renderKickFallback(c);
+                }
               });
-              if (gen !== renderGen) return;
-              if (data.fatal) {
-                warn("fatal HLS error → fallback");
-                renderKickFallback(c);
+              if (gen === renderGen) {
+                activeHls = hls;
+              } else {
+                hls.destroy();
               }
-            });
-            if (gen === renderGen) {
-              activeHls = hls;
+            } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+              // Real native HLS (iOS Safari).
+              log("hls.js unsupported but native HLS available → video.src");
+              video.src = c.videoUrl;
+              video.addEventListener("error", () => {
+                warn("native <video> error", video.error);
+                renderKickFallback(c);
+              });
             } else {
-              hls.destroy();
+              warn("no HLS playback path available → fallback");
+              renderKickFallback(c);
             }
           })
           .catch((err) => {
@@ -217,6 +228,7 @@ const renderPlayer = () => {
             if (gen === renderGen) renderKickFallback(c);
           });
       } else {
+        // Non-HLS URL (rare for Kick) — try direct.
         video.src = c.videoUrl;
         video.addEventListener("error", () => {
           warn("native <video> error", video.error);
