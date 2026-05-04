@@ -4,6 +4,9 @@ import { parseStreamer } from "./providers/parse.js";
 import * as twitch from "./providers/twitch.js";
 import * as kick from "./providers/kick.js";
 
+const APP_BUILD = "2026-05-04-hls-debug-2";
+console.log("[app] build", APP_BUILD);
+
 // ---------- DOM refs ----------
 const $ = (id) => document.getElementById(id);
 const status = $("status");
@@ -141,6 +144,10 @@ const renderPlayer = () => {
   if (c.provider === "kick") {
     if (c.videoUrl) {
       const gen = ++renderGen;
+      const log = (...a) => console.log("[kick]", ...a);
+      const warn = (...a) => console.warn("[kick]", ...a);
+      log("playback start, videoUrl=", c.videoUrl);
+
       const video = document.createElement("video");
       video.controls = true;
       video.autoplay = true;
@@ -161,22 +168,43 @@ const renderPlayer = () => {
 
       const isHls = /\.m3u8(\?|$)/i.test(c.videoUrl);
       const nativeHls = video.canPlayType("application/vnd.apple.mpegurl");
+      log("isHls=", isHls, "nativeHls=", nativeHls);
 
       if (isHls && !nativeHls) {
-        // Chrome/Firefox — need hls.js. Load lazily, then attach.
+        log("loading hls.js…");
         ensureHls()
           .then((Hls) => {
-            if (gen !== renderGen) return; // user navigated away
+            if (gen !== renderGen) {
+              log("stale gen, abandoning hls.js attach");
+              return;
+            }
+            log("hls.js loaded, version=", Hls.version, "supported=", Hls.isSupported());
             if (!Hls || !Hls.isSupported()) {
+              warn("hls.js not supported in this browser → fallback");
               renderKickFallback(c);
               return;
             }
-            const hls = new Hls();
+            const hls = new Hls({ debug: false });
             hls.loadSource(c.videoUrl);
             hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) =>
+              log("MANIFEST_PARSED, levels=", data.levels?.length)
+            );
+            hls.on(Hls.Events.LEVEL_LOADED, () => log("LEVEL_LOADED"));
             hls.on(Hls.Events.ERROR, (_evt, data) => {
+              warn("ERROR", {
+                type: data.type,
+                details: data.details,
+                fatal: data.fatal,
+                response: data.response,
+                reason: data.reason,
+                err: data.err?.message,
+              });
               if (gen !== renderGen) return;
-              if (data.fatal) renderKickFallback(c);
+              if (data.fatal) {
+                warn("fatal HLS error → fallback");
+                renderKickFallback(c);
+              }
             });
             if (gen === renderGen) {
               activeHls = hls;
@@ -184,17 +212,21 @@ const renderPlayer = () => {
               hls.destroy();
             }
           })
-          .catch(() => {
+          .catch((err) => {
+            warn("hls.js load failed", err);
             if (gen === renderGen) renderKickFallback(c);
           });
       } else {
-        // Safari (native HLS) or a non-HLS URL.
         video.src = c.videoUrl;
-        video.addEventListener("error", () => renderKickFallback(c));
+        video.addEventListener("error", () => {
+          warn("native <video> error", video.error);
+          renderKickFallback(c);
+        });
       }
 
       player.appendChild(video);
     } else {
+      console.warn("[kick] no videoUrl on clip → fallback");
       renderKickFallback(c);
     }
   } else {
