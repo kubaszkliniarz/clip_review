@@ -29,16 +29,28 @@ cd web && python3 -m http.server 5555
 # open http://localhost:5555
 ```
 
-For Twitch to work locally you need a token. Either copy one your CI minted
-into `web/twitch_token.json`, or run the mint script with your own credentials:
+For Twitch to work locally you need a minted token written to
+`web/twitch_token.json` (gitignored — deploy-time artifact, not source).
+
+The simplest setup is a `.env` at the repo root:
 
 ```sh
-export TWITCH_CLIENT_ID=...      # from https://dev.twitch.tv/console/apps
-export TWITCH_CLIENT_SECRET=...
+cp .env.example .env
+# then edit .env with credentials from https://dev.twitch.tv/console/apps
 .venv/bin/python -m clip_review.scripts.mint_twitch_token web/twitch_token.json
 ```
 
-`web/twitch_token.json` is gitignored — it's a deploy-time artifact, not source.
+The mint script auto-loads `.env` from the repo root; existing env vars take
+precedence so CI behavior is unchanged. Tokens are good for ~60 days; re-run
+the mint command to refresh. Both `.env` and `web/twitch_token.json` are
+gitignored.
+
+You can also pass env vars inline if you don't want a `.env` on disk:
+
+```sh
+TWITCH_CLIENT_ID=... TWITCH_CLIENT_SECRET=... \
+  .venv/bin/python -m clip_review.scripts.mint_twitch_token web/twitch_token.json
+```
 
 ## Deploy
 
