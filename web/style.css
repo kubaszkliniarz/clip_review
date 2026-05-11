@@ -376,6 +376,18 @@ select.input {
   font-weight: 700;
 }
 
+/* Toggle buttons (auto-advance, etc.) — invert when pressed. */
+.button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow:
+    inset -1px -1px 0 var(--bevel-light),
+    inset 1px 1px 0 var(--bevel-mid);
+}
+.button[aria-pressed="true"]:hover:not(:disabled) {
+  background: #1a1a1a;
+}
+
 /* ---------- Player ---------- */
 
 .player {
