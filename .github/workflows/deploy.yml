@@ -4,8 +4,10 @@ on:
   push:
     branches: [main, master]
   schedule:
-    # Refresh Twitch token every 12 hours (token lasts ~60d but we rotate often).
-    - cron: "0 */12 * * *"
+    # Refresh Twitch token weekly — tokens last ~60d, and every push to main
+    # already triggers a fresh mint, so the cron is just a safety net for
+    # periods of no commits. Mondays at 05:00 UTC.
+    - cron: "0 5 * * 1"
   workflow_dispatch:
 
 permissions:
